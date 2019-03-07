@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+</head>
+<body>
+	<style type="text/css">
+		#chartdiv {
+    width   : 100%;
+    height  : 500px;
+} 
+#chart2 {
+    width   : 100%;
+    height  : 500px;
+} 
+	</style>
+	<script src="src/js/am3_amcharts.js"></script>
+<script src="src/js/am3_serial.js"></script>
+<script src="src/js/am3_light.js"></script>
+<script src="src/js/am3_amstock.js"></script>
+
+<script type="text/javascript">
+	var chartData1 = [];
+var chartData2 = [];
+var chartData3 = [];
+var chartData4 = [];
+
+generateChartData();
+
+function generateChartData() {
+  var firstDate = new Date();
+  firstDate.setDate(firstDate.getDate() - 500);
+  firstDate.setHours(0, 0, 0, 0);
+
+  for (var i = 0; i < 500; i++) {
+    var newDate = new Date(firstDate);
+    newDate.setDate(newDate.getDate() + i);
+
+    var a1 = Math.round(Math.random() * (40 + i)) + 100 + i;
+    var b1 = Math.round(Math.random() * (1000 + i)) + 500 + i * 2;
+
+    var a2 = Math.round(Math.random() * (100 + i)) + 200 + i;
+    var b2 = Math.round(Math.random() * (1000 + i)) + 600 + i * 2;
+
+    var a3 = Math.round(Math.random() * (100 + i)) + 200;
+    var b3 = Math.round(Math.random() * (1000 + i)) + 600 + i * 2;
+
+    var a4 = Math.round(Math.random() * (100 + i)) + 200 + i;
+    var b4 = Math.round(Math.random() * (100 + i)) + 600 + i;
+
+    chartData1.push({
+      date: newDate,
+      value: a1,
+      volume: b1
+    });
+    chartData2.push({
+      date: newDate,
+      value: a2,
+      volume: b2
+    });
+    chartData3.push({
+      date: newDate,
+      value: a3,
+      volume: b3
+    });
+    chartData4.push({
+      date: newDate,
+      value: a4,
+      volume: b4
+    });
+  }
+}
+
+var chart = AmCharts.makeChart("chartdiv", {
+  type: "stock",
+  "theme": "light",
+
+  dataSets: [{
+      title: "first data set",
+      fieldMappings: [{
+        fromField: "value",
+        toField: "value"
+      }, {
+        fromField: "volume",
+        toField: "volume"
+      }],
+      dataProvider: chartData1,
+      categoryField: "date"
+    },
+
+    {
+      title: "second data set",
+      fieldMappings: [{
+        fromField: "value",
+        toField: "value"
+      }, {
+        fromField: "volume",
+        toField: "volume"
+      }],
+      dataProvider: chartData2,
+      categoryField: "date"
+    },
+
+    {
+      title: "third data set",
+      fieldMappings: [{
+        fromField: "value",
+        toField: "value"
+      }, {
+        fromField: "volume",
+        toField: "volume"
+      }],
+      dataProvider: chartData3,
+      categoryField: "date"
+    },
+
+    {
+      title: "fourth data set",
+      fieldMappings: [{
+        fromField: "value",
+        toField: "value"
+      }, {
+        fromField: "volume",
+        toField: "volume"
+      }],
+      dataProvider: chartData4,
+      categoryField: "date"
+    }
+  ],
+
+  panels: [{
+
+      showCategoryAxis: false,
+      title: "Value",
+      percentHeight: 70,
+
+      stockGraphs: [{
+        id: "g1",
+
+        valueField: "value",
+        comparable: true,
+        compareField: "value",
+        balloonText: "[[title]]:<b>[[value]]</b>",
+        compareGraphBalloonText: "[[title]]:<b>[[value]]</b>"
+      }],
+
+      stockLegend: {
+        periodValueTextComparing: "[[percents.value.close]]%",
+        periodValueTextRegular: "[[value.close]]"
+      }
+    },
+
+    {
+      title: "Volume",
+      percentHeight: 30,
+      stockGraphs: [{
+        valueField: "volume",
+        type: "column",
+        showBalloon: false,
+        fillAlphas: 1
+      }],
+
+      stockLegend: {
+        periodValueTextRegular: "[[value.close]]"
+      }
+    }
+  ],
+
+  chartScrollbarSettings: {
+    graph: "g1"
+  },
+
+  chartCursorSettings: {
+    valueBalloonsEnabled: true,
+    fullWidth: true,
+    cursorAlpha: 0.1,
+    valueLineBalloonEnabled: true,
+    valueLineEnabled: true,
+    valueLineAlpha: 0.5
+  },
+
+  periodSelector: {
+    position: "left",
+    periods: [{
+      period: "MM",
+      selected: true,
+      count: 1,
+      label: "1 month"
+    }, {
+      period: "YYYY",
+      count: 1,
+      label: "1 year"
+    }, {
+      period: "YTD",
+      label: "YTD"
+    }, {
+      period: "MAX",
+      label: "MAX"
+    }]
+  },
+
+  dataSetSelector: {
+    position: "left"
+  },
+  "export": {
+    "enabled": true
+  }
+});
+
+chart.addListener("init", function(e) {
+
+  // Lock periodSelector and release with an delay to abuse the internal "zoomed" callback
+  function handleInputField(inputEvent) {
+    if (inputEvent.type == "focus") {
+      e.chart.periodSelector.retainLock = true;
+    } else {
+      setTimeout(function() {
+        e.chart.periodSelector.retainLock = false;
+      }, 250);
+    }
+  }
+
+  // Observe zooming to capture the date
+  e.chart.addListener("zoomed", function(e) {
+
+    // Required delay because periodSelector used this event before calling his own
+    setTimeout(function() {
+      e.chart.periodSelector.retainStart = e.startDate;
+    }, 100);
+  });
+
+  // Observe periodSelector updates and apply retained date
+  e.chart.periodSelector.addListener("changed", function(e) {
+    var start = Number(e.chart.periodSelector.retainStart || e.startDate);
+    var diff = Number(e.endDate) - Number(e.startDate);
+    var end = start + diff;
+    
+    if (!e.chart.periodSelector.retainLock &&
+      e.chart.periodSelector.retainStart &&
+      e.predefinedPeriod != "MAX" &&
+      e.chart.lastDate > end
+    ) {
+      start = new Date(start);
+      end = new Date(end);
+      e.chart.zoom(start, end);
+    }
+  });
+
+  // Observe periodSelector date fields
+  e.chart.periodSelector.startDateField.addEventListener("focus", handleInputField);
+  e.chart.periodSelector.startDateField.addEventListener("blur", handleInputField);
+  e.chart.periodSelector.endDateField.addEventListener("focus", handleInputField);
+  e.chart.periodSelector.endDateField.addEventListener("blur", handleInputField);
+});
+</script>
+
+<script type="text/javascript">
+	var chart = AmCharts.makeChart("chart2", {
+  "type": "serial",
+  "theme": "light",
+  "dataProvider": [{
+    "country": "USA",
+    "visits": 2025
+  }, {
+    "country": "China",
+    "visits": 1882
+  }, {
+    "country": "Japan",
+    "visits": 1809
+  }, {
+    "country": "Germany",
+    "visits": 1322
+  }, {
+    "country": "UK",
+    "visits": 1122
+  }, {
+    "country": "France",
+    "visits": 1114
+  }, {
+    "country": "India",
+    "visits": 984
+  }, {
+    "country": "Spain",
+    "visits": 711
+  }, {
+    "country": "Netherlands",
+    "visits": 665
+  }, {
+    "country": "Russia",
+    "visits": 580
+  }, {
+    "country": "South Korea",
+    "visits": 443
+  }, {
+    "country": "Canada",
+    "visits": 441
+  }, {
+    "country": "Brazil",
+    "visits": 395
+  }],
+  "graphs": [{
+    "fillAlphas": 0.9,
+    "lineAlpha": 0.2,
+    "type": "column",
+    "valueField": "visits"
+  }],
+  "categoryField": "country",
+  "chartCursor": {
+    "fullWidth": true,
+    "cursorAlpha": 0.1,
+    "listeners": [{
+      "event": "changed",
+      "method": function(ev) {
+        // Log last cursor position
+        ev.chart.lastCursorPosition = ev.index;
+      }
+    }]
+  },
+  "listeners": [{
+    "event": "init",
+    "method": function(ev) {
+      // Set a jQuery click event on chart area
+      jQuery(ev.chart.chartDiv).on("click", function(e) {
+        // Check if last cursor position is present
+        if (!isNaN(ev.chart.lastCursorPosition)) {
+          console.log("clicked on " + ev.chart.dataProvider[ev.chart.lastCursorPosition].country);
+        }
+      })
+    }
+  }]
+});
+</script>
+
+
+<div id="chartdiv"></div>
+<hr>
+<div id="chart2"></div>
+<hr>
+</body>
+</html>
