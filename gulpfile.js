@@ -2,6 +2,7 @@ var gulp = require("gulp");
 var cssnano = require("gulp-cssnano");
 var rename = require("gulp-rename");
 var uglify = require("gulp-uglify");
+// var UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 var concat = require("gulp-concat");
 var cache = require("gulp-cache");
 var imagemin = require("gulp-imagemin");

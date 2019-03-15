@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>echarts vs</title>
+    <script src="/src/js/echarts.min.js"></script>
+    <script src="/src/js/jquery.js"></script>
+</head>
+<body>
+<!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+    
+<div>
+    <select id="selectDate", onchange="changeStatus(this.value)">
+        <!-- <option>选择日期</option> -->
+
+    </select>
+
+    <select id="selectStatus", onchange="changeSymbol(this.value, document.getElementById('selectDate').value)">
+
+    </select>
+
+    <select id="selectSymbol", onchange="loadOption(document.getElementById('selectDate').value, document.getElementById('selectStatus').value, this.value)">
+
+    </select>
+</div>
+    
+
+    <div id="main" style="width: 600px;height:400px;"></div>
+
+
+    <script type="text/javascript">
+        // Echarts dom
+        var myChart = echarts.init(document.getElementById('main'));
+        // Add dropdown of date
+        $.getJSON("/static/iqsss/dropdown.json", function(data){
+            var elementDate = document.getElementById("selectDate");
+            var dataKeys = Object.keys(data)
+            var dataLength = dataKeys.length
+            for (var i = 0; i < dataLength; i++){
+                elementDate.innerHTML = elementDate.innerHTML + '<option value="' + dataKeys[i] + '">' + dataKeys[i] + '</option>';
+            }
+            // 将第一个值作为默认值，并执行函数
+            $("#selectDate").val(dataKeys[dataLength-1]);
+            changeStatus(dataKeys[dataLength-1]); 
+        });
+
+        // Add dropdown of status.
+        function changeStatus(date){
+            $.getJSON("/static/iqsss/dropdown.json", function(data){
+                var elementStatus = document.getElementById("selectStatus"); // Select the element.
+                elementStatus.options.length = 0;  // Clear options
+                var statusDict = data[date];
+                // var inserted = [];
+                for (var i = 0; i < Object.keys(statusDict).length; i++){
+                    statusValue = Object.keys(statusDict)[i];
+                    createOption(elementStatus, statusValue, statusValue)                          
+                }
+
+                changeSymbol(Object.keys(statusDict)[0], date);
+            })
+        }
+
+        function createDateRange(start, end){
+            var arr = new Array(),
+                dt = new Date(start);
+
+            while (dt <= end) {
+                arr.push(new Date(dt));
+                dt.setDate(dt.getDate() + 1);
+              }
+
+              return arr;
+
+        }
+
+        // Add dropdown of symbols.
+        function changeSymbol(status, date){
+            $.getJSON("/static/iqsss/dropdown.json", function(data){
+                var elementSymbol = document.getElementById("selectSymbol");
+                elementSymbol.options.length = 0;
+                var symbolValue = data[date][status];
+                for (var i = 0; i < symbolValue.length; i++){
+                    createOption(elementSymbol, symbolValue[i], symbolValue[i])
+                }
+                loadOption(date, status, symbolValue[0]);
+            })
+        }
+
+        function createOption(ddl, text, value) {
+            var opt = document.createElement('option');
+            opt.value = value;
+            opt.text = text;
+            ddl.options.add(opt);
+        }
+
+        function createUrlPart(strWrod){
+            var result =  strWrod.slice(-2,).toLowerCase() + strWrod.slice(0, 6);
+            return result;
+        }
+
+
+        // 显示标题，图例和空的坐标轴
+        myChart.setOption({
+            title: {
+                text: 'rate day line'
+            },
+            tooltip: {},
+            dataZoom: [
+                {   // 这个dataZoom组件，默认控制x轴。
+                    type: 'slider', // 这个 dataZoom 组件是 slider 型 dataZoom 组件
+                    start: 80,      // 左边在 10% 的位置。
+                    end: 100         // 右边在 60% 的位置。
+                }
+            ],
+            legend: {
+                data:[]
+            },
+            xAxis: {
+                data: []
+            },
+            yAxis: {},
+            series: [{
+                name: '',
+                type: 'bar',
+                data: []
+            }]
+        });
+
+        function loadOption(day, status, symbol){
+            $.getJSON("/static/iqsss/" + day + "/" + status + "/" + symbol + ".json", function(data){
+                // console.log(data);
+                var target = data[0];            
+                var values = [],
+                    tradeDate =[],
+                    colors = [],
+                    barGaps = [],
+                    length = target.value.length;
+
+                var colorPool = ['#E9C265', '#F31219'],
+                    gaps = ['200%', '20%'];
+
+                for (var i = 0; i < target.value.length; i++){
+                    values.push(target.value[i].rate);
+                    var date = target.value[i].trade_date;
+                    var weekDay = new Date(date).getDay();
+                    if (weekDay == 1){
+                        colors.push(colorPool[0]);
+                        barGaps.push(gaps[0]);
+                    }else {
+                        colors.push(colorPool[1]);
+                        barGaps.push(gaps[1]);
+                    }
+
+                    // 利用正则将修改时间值格式
+                    // var pattern = /(\d{4})(\d{2})(\d{2})/;
+                    // var dt = date.replace(pattern,'$1-$2-$3');
+
+                    tradeDate.push(date);
+
+                } 
+                // console.log(colors);          
+                // console.log(target.ts_code);
+                myChart.setOption({
+                    title: {
+                        text: target.ts_code + '/'+ target.c_name + '/' + target.area + '/' + target.industry + '/' + target.market + '/' + target.peaks_num,
+                        link: 'http://finance.sina.com.cn/realstock/company/' + createUrlPart(target.ts_code) + '/nc.shtml'
+                    },
+
+                    xAxis: {
+                        // type: 'time',
+                        data: tradeDate,
+                        axisLabel:{
+                            // interval: 60,
+                            rotate: 45,
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        }
+                    },
+                    series: [{
+                        // 根据名字对应到相应的系列
+                        name: '',
+                        type: 'bar',
+                        itemStyle: {
+                            normal:{  
+　　　　　　　　　　　　//每个柱子的颜色即为colorList数组里的每一项，如果柱子数目多于colorList的长度，则柱子颜色循环使用该数组
+                                color: function (params){
+                                    return colors[params.dataIndex];
+                                }
+                            },
+                        },
+                        
+                        markPoint : {
+                            data : [
+                                {type : 'max', name: '最大值'},
+                                // {type : 'min', name: '最小值'}
+                            ]
+                        },
+                        markLine : {
+                            data:[
+                            {
+                                name: '1.27',
+                                yAxis: 1.27
+                            },
+                            {
+                                name: '2.0',
+                                yAxis: 2.0
+                            },
+                            {
+                                name: '3.0',
+                                yAxis: 3.0
+                            }
+                            ]
+                        },
+                        data: values
+                    }]
+                })
+                ;
+                
+            });
+        }
+
+
+    </script>
+</body>
+</html>

@@ -1,18 +1,95 @@
 <!DOCTYPE html>
 <html>
-  
-  <head>
-    <title>iqsss</title>
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<head>
+    <title></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.12.0/lodash.js"></script>
+    <script src="/src/js/moment.min.js"></script>
+    <script src="/src/js/jquery.js"></script>
+    <script src="/src/js/echarts.min.js"></script>
+
 </head>
 <body>
-  <div id="tester" style="width:600px;height:250px;"></div>
-  <script>
-  TESTER = document.getElementById('tester');
-  Plotly.plot( TESTER, [{
-  x: [1, 2, 3, 4, 5],
-  y: [1, 2, 4, 8, 16] }], {
-  margin: { t: 0 } } );
+<div id="main" style="width: 600px;height:400px;"></div>
+<script type="text/javascript">
+    var dates = [
+  "1396-10-11 09:07:21",
+  "1396-10-10 10:03:51",
+  "1396-10-07 02:07:02",
+  "1396-11-27 08:02:45",
+  "1396-11-19 01:02:32",
+  "1396-12-01 22:13:21",
+  "1396-02-12 09:07:21",
+  "1396-05-18 04:02:29",
+  "1396-05-21 14:01:42",
+  "1396-07-11 01:16:29"
+];
+// Echarts dom
+var myChart = echarts.init(document.getElementById('main'));
+$.getJSON("/static/iqsss/2019-03-12/无/600738.SH.json", function(data){
+    var target = data[0];
+    var dateArray = [];
+    var rateArray = [];
+    var length = target.value.length;
+    for (var i = 0; i < length; i++){
+        rateArray.push(target.value[i].rate);
+        dateArray.push(target.value[i].trade_date);
+
+    }
+    var groupedResults = _.groupBy(dateArray, function(result){
+        return moment(result, 'YYYY-MM-DD').startOf('week');
+    })
+    var result = [];
+    var title = ['星期', '周一', '周二', '周三', '周四', '周五'];
+    result.push(title);
+    var dateHeader = Object.keys(groupedResults);
+    var dateValues = Object.values(groupedResults);
+    for (var i = 0; i < dateHeader.length; i ++){
+        
+        var groupValue = [dateHeader[i],0,0,0,0,0];
+        for (var j = 0; j < dateValues[i].length; j ++){
+            var weekDay = new Date(dateValues[i][j]).getDay();
+            groupValue.fill(rateArray[dateArray.indexOf(dateValues[i][j])], weekDay, weekDay + 1)
+        }
+        result.push(groupValue);
+    }
+    console.log(result);
+
+    myChart.setOption({
+                    legend: {},
+    tooltip: {},
+    dataset: {
+        source: 
+            result
+        
+    },
+    dataZoom: [
+                {   // 这个dataZoom组件，默认控制x轴。
+                    type: 'slider', // 这个 dataZoom 组件是 slider 型 dataZoom 组件
+                    start: 90,      // 左边在 10% 的位置。
+                    end: 100         // 右边在 60% 的位置。
+                }
+            ],
+    xAxis: {type: 'category'},
+    yAxis: {},
+    // Declare several bar series, each will be mapped
+    // to a column of dataset.source by default.
+    series: [
+        {type: 'bar'},
+        {type: 'bar'},
+        {type: 'bar'},
+        {type: 'bar'},
+        {type: 'bar'}
+    ]
+                });
+
+
+})
+
+
+// var groupedResults = _.groupBy(dates, function (result) {
+//   return moment(result, 'YYYY-MM-DD').startOf('week');
+// });
+// console.log(groupedResults);
 </script>
 
 </body>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>echarts vs</title>
+    <script src="/src/js/echarts.js"></script>
+    <script src="/src/js/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.12.0/lodash.js"></script>
+    <script src="/src/js/moment.min.js"></script>
+    <script src="/src/js/utils.js"></script>
+</head>
+<body>
+<!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+    
+<div>
+    <select id="selectDate", onchange="changeStatus(this.value)">
+    </select>
+
+    <select id="selectStatus", onchange="changeSymbol(this.value, document.getElementById('selectDate').value)">
+
+    </select>
+
+    <select id="selectSymbol", onchange="loadOption(document.getElementById('selectDate').value, document.getElementById('selectStatus').value, this.value)">
+
+    </select>
+</div>
+    
+
+    <div id="main" style="width: 600px;height:400px;"></div>
+
+
+    <script type="text/javascript">
+        // Echarts dom
+        var myChart = echarts.init(document.getElementById('main'));
+        // Add dropdown of date
+        $.getJSON("/static/iqsss/dropdown.json", function(data){
+            var elementDate = document.getElementById("selectDate");
+            var dataKeys = Object.keys(data)
+            var dataLength = dataKeys.length
+            for (var i = 0; i < dataLength; i++){
+                elementDate.innerHTML = elementDate.innerHTML + '<option value="' + dataKeys[i] + '">' + dataKeys[i] + '</option>';
+            }
+            // 将第一个值作为默认值，并执行函数
+            $("#selectDate").val(dataKeys[dataLength-1]);
+            changeStatus(dataKeys[dataLength-1]); 
+        });
+
+        // Add dropdown of symbols.
+        function changeSymbol(status, date){
+            $.getJSON("/static/iqsss/dropdown.json", function(data){
+                var elementSymbol = document.getElementById("selectSymbol");
+                elementSymbol.options.length = 0;
+                var symbolValue = data[date][status];
+                for (var i = 0; i < symbolValue.length; i++){
+                    createOption(elementSymbol, symbolValue[i], symbolValue[i])
+                }
+                loadOption(date, status, symbolValue[0]);
+            })
+        }
+
+        function changeStatus(date){
+            $.getJSON("/static/iqsss/dropdown.json", function(data){
+                var elementStatus = document.getElementById("selectStatus"); // Select the element.
+                elementStatus.options.length = 0;  // Clear options
+                var statusDict = data[date];
+                // var inserted = [];
+                for (var i = 0; i < Object.keys(statusDict).length; i++){
+                    statusValue = Object.keys(statusDict)[i];
+                    createOption(elementStatus, statusValue, statusValue)                          
+                }
+
+                changeSymbol(Object.keys(statusDict)[0], date);
+            })
+        }
+
+        // 显示标题，图例和空的坐标轴
+        myChart.setOption({
+            title: {
+                text: 'rate day line'
+            },
+            tooltip: {},
+            dataset:{},
+            dataZoom: [
+            {
+                type: 'slider',
+                show: true,
+                start: 90,
+                end: 100,
+                handleSize: 8
+            },
+            {
+                type: 'inside',
+                start: 94,
+                end: 100
+            },
+            
+        ],
+            xAxis: {type: 'category',
+                    axisLabel:{
+                            // interval: 60,
+                            rotate: 45,
+                            fontSize: 8,
+                            fontWeight: 'bold',
+                        }
+            },
+            yAxis: {},
+  
+        });
+
+        function loadOption(day, status, symbol){
+            $.getJSON("/static/iqsss/" + day + "/" + status + "/" + symbol + ".json", function(data){
+                var target = data[0];
+                var dateArray = [];
+                var rateArray = [];
+                var length = target.value.length;
+                for (var i = 0; i < length; i++){
+                    rateArray.push(target.value[i].rate);
+                    dateArray.push(target.value[i].trade_date);
+
+                }
+                var groupedResults = _.groupBy(dateArray, function(result){
+                    return moment(result, 'YYYY-MM-DD').startOf('isoWeek');
+                })
+                var result = [];
+                var title = ['星期', '周一', '周二', '周三', '周四', '周五', '周均值'];
+                result.push(title);
+                var dateHeader = Object.keys(groupedResults);
+                var dateValues = Object.values(groupedResults);
+                for (var i = 0; i < dateHeader.length; i ++){
+                    var month = new Date(dateHeader[i]).getMonth() + 1
+
+                    // var firstaValue = new Date(dateHeader[i]).getFullYear() + '-' + month + '/' +moment(new Date(dateHeader[i])).weeks();
+                    var firstaValue = dateValues[i][0] + '/' +moment(new Date(dateHeader[i])).weeks();
+                    var groupValue = [firstaValue,'-','-','-','-','-', '-'];
+                    var weekSum = 0;
+                    for (var j = 0; j < dateValues[i].length; j ++){
+                        var weekDay = new Date(dateValues[i][j]).getDay();
+                        var currentRateValue = rateArray[dateArray.indexOf(dateValues[i][j])];
+                        groupValue.fill(currentRateValue, weekDay, weekDay + 1)
+                        weekSum = weekSum + currentRateValue;
+                    }
+                    // 计算周线均值，精度取 0.01
+                    var weekMean = Math.round(weekSum * 100.0 / dateValues[i].length) / 100;
+                    groupValue.fill(weekMean, 6, 7);
+                    result.push(groupValue);
+                }
+                // console.log(result);
+                var colorPool = ['#E9C265', '#F31219'],
+                    gaps = ['200%', '20%'];
+
+                myChart.setOption({
+                    title: {
+                        text: target.ts_code + '/'+ target.c_name + '/' + target.area + '/' + target.industry + '/' + target.market + '/' + target.peaks_num,
+                        link: 'http://finance.sina.com.cn/realstock/company/' + createUrlPart(target.ts_code) + '/nc.shtml'
+                    },
+                     dataset: {
+                        source: 
+                            result  
+                    },
+                    yAxis: {},
+                    xAxis: {},
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        },
+                        position: function (pos, params, el, elRect, size) {
+                                var obj = {top: 100};
+                                obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 30;
+                                return obj;
+                            },
+                    },
+                    toolbox: {
+                        feature: {
+                            dataView: {show: false, readOnly: false},
+                            restore: {show: true},
+                            saveAsImage: {show: true}
+                        }
+                    },
+                    series: [{
+                        // 根据名字对应到相应的系列
+                        type: 'bar',
+                        color: '#F31219',
+                        markLine : {
+                            data:[
+                            {
+                                name: '1.27',
+                                yAxis: 1.27
+                            },
+                            {
+                                name: '2.0',
+                                yAxis: 2.0
+                            },
+                            {
+                                name: '3.0',
+                                yAxis: 3.0
+                            }
+                            ],
+
+                        },
+                        itemStyle:{
+                            opacity: 0.6
+                         },
+                    },
+                    {type: 'bar', 
+                     color: '#F31219',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'bar',
+                     color: '#F31219',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'bar',
+                     color: '#F31219',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'bar',
+                     color: '#E9C265',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'line',
+                     color: '#F31219',
+                     smooth: false,
+
+                    }
+                    ]
+                });
+            });
+        }
+
+
+    </script>
+</body>
+</html>
