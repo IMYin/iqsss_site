@@ -27,6 +27,8 @@
 
     <div id="main" style="width: 600px;height:350px;"></div>
     <div id="main2" style="width: 600px;height:350px;"></div>
+    <div id="floatHolders" style="width: 600px;height:350px;"></div>
+    <div id="holders" style="width: 600px;height:350px;"></div>
 
 
 
@@ -34,6 +36,8 @@
         // Echarts dom
         var myChart = echarts.init(document.getElementById('main'));
         var myChartVol = echarts.init(document.getElementById('main2'));
+        var floatHolderPie = echarts.init(document.getElementById('floatHolders'));
+        var holdersPie = echarts.init(document.getElementById('holders'));
         // Add dropdown of date
         $.getJSON("/static/iqsss/dropdown.json", function(data){
             var elementDate = document.getElementById("selectDate");
@@ -83,20 +87,20 @@
             tooltip: {},
             dataset:{},
             dataZoom: [
-            {
-                type: 'slider',
-                show: false,
-                start: 90,
-                end: 100,
-                handleSize: 8
-            },
-            {
-                type: 'inside',
-                start: 90,
-                end: 100
-            },
+                {
+                    type: 'slider',
+                    show: false,
+                    start: 90,
+                    end: 100,
+                    handleSize: 8
+                },
+                {
+                    type: 'inside',
+                    start: 90,
+                    end: 100
+                },
             
-        ],
+            ],
             grid:{
                 bottom: '1%',
             },
@@ -144,6 +148,87 @@
             },
             yAxis: {},
   
+        });
+
+        // draw pie
+        floatHolderPie.setOption({
+            title: {
+                text: '十大流通股东',
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: "{b}: <br/>{c} ({d}%)"
+            },
+            legend: {
+                orient: 'vertical',
+                x: 'right',
+                textStyle: {
+                    fontSize: 9,
+                }
+            },
+            series:[{
+                type:'pie',
+                radius: ['50%', '70%'],
+                label: {
+                    normal: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        show: true,
+                        textStyle: {
+                            fontSize: '20',
+                            fontWeight: 'bold'
+                        }
+                    }
+                },
+                labelLine: {
+                    normal: {
+                        show: false
+                    }
+                },
+
+            }]
+        });
+
+        holdersPie.setOption({
+            title: {
+                text: '十大股东',
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: "{b}: <br/>{c} ({d}%)"
+            },
+            legend: {
+                orient: 'vertical',
+                x: 'right',
+                textStyle: {
+                    fontSize: 9,
+                }
+            },
+            series:[{
+                type:'pie',
+                radius: ['50%', '70%'],
+                label: {
+                    normal: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        show: true,
+                        textStyle: {
+                            fontSize: '20',
+                            fontWeight: 'bold'
+                        }
+                    }
+                },
+                labelLine: {
+                    normal: {
+                        show: false
+                    }
+                },
+
+            }]
         });
 
 
@@ -386,6 +471,31 @@
 
                 echarts.connect([myChart, myChartVol]);
             });
+
+
+            $.getJSON("/static/holders/floatTop10/" + symbol +".json", function(data){
+                console.log(data[2]);
+                floatHolderPie.setOption({
+
+                    series: [{
+                        type:'pie',
+                        data: data[2],
+                    }]
+                });
+
+            })
+
+            $.getJSON("/static/holders/top10/" + symbol +".json", function(data){
+                console.log(data[2]);
+                holdersPie.setOption({
+
+                    series: [{
+                        type:'pie',
+                        data: data[2],
+                    }]
+                });
+
+            })
         }
 
 
