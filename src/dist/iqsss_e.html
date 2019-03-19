@@ -25,12 +25,15 @@
 </div>
     
 
-    <div id="main" style="width: 600px;height:400px;"></div>
+    <div id="main" style="width: 600px;height:350px;"></div>
+    <div id="main2" style="width: 600px;height:350px;"></div>
+
 
 
     <script type="text/javascript">
         // Echarts dom
         var myChart = echarts.init(document.getElementById('main'));
+        var myChartVol = echarts.init(document.getElementById('main2'));
         // Add dropdown of date
         $.getJSON("/static/iqsss/dropdown.json", function(data){
             var elementDate = document.getElementById("selectDate");
@@ -82,18 +85,55 @@
             dataZoom: [
             {
                 type: 'slider',
-                show: true,
+                show: false,
                 start: 90,
                 end: 100,
                 handleSize: 8
             },
             {
                 type: 'inside',
-                start: 94,
+                start: 90,
                 end: 100
             },
             
         ],
+            grid:{
+                bottom: '1%',
+            },
+            xAxis: {type: 'category',
+                    // axisLabel:{
+                    //         // interval: 60,
+                    //         rotate: 45,
+                    //         fontSize: 8,
+                    //         fontWeight: 'bold',
+                    //     }
+            },
+            yAxis: {},
+  
+        });
+
+        // 显示标题，图例和空的坐标轴
+        myChartVol.setOption({
+            tooltip: {},
+            dataset:{},
+            dataZoom: [
+                {
+                    type: 'slider',
+                    show: true,
+                    start: 90,
+                    end: 100,
+                    handleSize: 8
+                },
+                {
+                    type: 'inside',
+                    start: 90,
+                    end: 100
+                },
+                
+            ],
+            grid:{
+                top: '1%',
+            },
             xAxis: {type: 'category',
                     axisLabel:{
                             // interval: 60,
@@ -106,23 +146,28 @@
   
         });
 
+
         function loadOption(day, status, symbol){
             $.getJSON("/static/iqsss/" + day + "/" + status + "/" + symbol + ".json", function(data){
                 var target = data[0];
                 var dateArray = [];
                 var rateArray = [];
+                var volArray = [];
                 var length = target.value.length;
                 for (var i = 0; i < length; i++){
                     rateArray.push(target.value[i].rate);
                     dateArray.push(target.value[i].trade_date);
+                    volArray.push(Math.round(target.value[i].vol / 100) /100);
 
                 }
                 var groupedResults = _.groupBy(dateArray, function(result){
                     return moment(result, 'YYYY-MM-DD').startOf('isoWeek');
                 })
-                var result = [];
+                var result = [],
+                    resultVol = [];
                 var title = ['星期', '周一', '周二', '周三', '周四', '周五', '周均值'];
                 result.push(title);
+                resultVol.push(title);
                 var dateHeader = Object.keys(groupedResults);
                 var dateValues = Object.values(groupedResults);
                 for (var i = 0; i < dateHeader.length; i ++){
@@ -130,18 +175,30 @@
 
                     // var firstaValue = new Date(dateHeader[i]).getFullYear() + '-' + month + '/' +moment(new Date(dateHeader[i])).weeks();
                     var firstaValue = dateValues[i][0] + '/' +moment(new Date(dateHeader[i])).weeks();
-                    var groupValue = [firstaValue,'-','-','-','-','-', '-'];
-                    var weekSum = 0;
+                    var groupValue = [firstaValue,'-','-','-','-','-', '-'],
+                        groupVol = [firstaValue,'-','-','-','-','-', '-'];
+
+                    var weekSum = 0,
+                        volWeekSum = 0;
+
                     for (var j = 0; j < dateValues[i].length; j ++){
                         var weekDay = new Date(dateValues[i][j]).getDay();
                         var currentRateValue = rateArray[dateArray.indexOf(dateValues[i][j])];
                         groupValue.fill(currentRateValue, weekDay, weekDay + 1)
                         weekSum = weekSum + currentRateValue;
+
+
+                        var currentVolValue = volArray[dateArray.indexOf(dateValues[i][j])];
+                        groupVol.fill(currentVolValue, weekDay, weekDay + 1)
+                        volWeekSum = volWeekSum + currentVolValue;
                     }
                     // 计算周线均值，精度取 0.01
                     var weekMean = Math.round(weekSum * 100.0 / dateValues[i].length) / 100;
+                    var weekMeanVol = Math.round(volWeekSum * 100.0 / dateValues[i].length) / 100;
                     groupValue.fill(weekMean, 6, 7);
+                    groupVol.fill(weekMeanVol, 6, 7);
                     result.push(groupValue);
+                    resultVol.push(groupVol);
                 }
                 // console.log(result);
                 var colorPool = ['#E9C265', '#F31219'],
@@ -156,8 +213,21 @@
                         source: 
                             result  
                     },
-                    yAxis: {},
-                    xAxis: {},
+                    yAxis: [
+                        {
+                            type: 'value',
+                            name: '指标值',
+                            axisLabel: {
+                            fontSize: 8,
+                            rotate: -45,
+                            fontWeight: 'bold',
+                        }
+
+                        }
+                    ],
+                    xAxis: {
+                        show: false,
+                    },
                     tooltip: {
                         trigger: 'axis',
                         axisPointer: {
@@ -168,6 +238,9 @@
                                 obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 30;
                                 return obj;
                             },
+                        // formatter: function(data){
+                        //     return data[0].name + '<br/>'+data[0].value
+                        // }
                     },
                     toolbox: {
                         feature: {
@@ -232,6 +305,86 @@
                     }
                     ]
                 });
+
+
+                myChartVol.setOption({
+                    title:{
+                        show:false,
+                    },
+                     dataset: {
+                        source: 
+                            resultVol
+                    },
+                    yAxis: [
+                        {
+                            type: 'value',
+                            name: '交易量',
+                            axisLabel: {
+                            formatter: '{value} 万手',
+                            fontSize: 8,
+                            rotate: 45,
+                            fontWeight: 'bold',
+                        }
+
+                        },
+                    ],
+                    xAxis: {},
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        },
+                        position: function (pos, params, el, elRect, size) {
+                                var obj = {top: 100};
+                                obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 30;
+                                return obj;
+                            },
+                        // formatter: function(data){
+                        //     return data[0].name + '<br/>'+data[0].value
+                        // }
+                    },
+                    
+                    series: [{
+                        // 根据名字对应到相应的系列
+                        type: 'bar',
+                        color: '#4E9DF8',
+                        itemStyle:{
+                            opacity: 0.6
+                         },
+                    },
+                    {type: 'bar', 
+                     color: '#4E9DF8',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'bar',
+                     color: '#4E9DF8',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'bar',
+                     color: '#4E9DF8',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'bar',
+                     color: '#E9C265',
+                     itemStyle:{
+                        opacity: 0.6
+                     },
+                    },
+                    {type: 'line',
+                     color: '#4E9DF8',
+                     smooth: false,
+
+                    }
+                    ]
+                });
+
+                echarts.connect([myChart, myChartVol]);
             });
         }
 
