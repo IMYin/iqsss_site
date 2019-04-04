@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>symbolsCount</title>
+    <script src="/src/js/echarts.js"></script>
+    <script src="/src/js/jquery-3.3.1.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.12.0/lodash.js"></script>
+    <script src="/src/js/moment.min.js"></script> -->
+    <!-- <script src="/src/js/utils.js"></script> -->
+</head>
+<body>
+
+<div id="main" style="width: 600px;height:350px;"></div>
+
+<script type="text/javascript">
+    var myChart = echarts.init(document.getElementById('main'));
+    $.getJSON("/static/symbolsCount.json", function(data){
+        var xData = [],
+            yData = [];
+        for (var i = 0; i < data.length; i ++){
+            xData.push(data[i]['update_date']);
+            yData.push(data[i]['numbers']);
+        }
+
+        myChart.setOption({
+            tooltip: {},
+            xAxis: {
+                    type: 'category',
+                    data: xData,
+                    axisLabel:{
+                            // interval: 60,
+                            rotate: 45,
+                            fontSize: 8,
+                            fontWeight: 'bold',
+                        },
+                },
+                yAxis: {
+                    type: 'value',
+                    name: 'symbol 个数',
+                    axisLabel: {
+                            fontSize: 8,
+                            // rotate: -45,
+                            fontWeight: 'bold',
+                        }
+                },
+                series: [{
+                    data: yData,
+                    type: 'bar',
+                    markPoint : {
+                        data : [
+                            {type : 'max', name: '最大值'},
+                            {type : 'min', name: '最小值'}
+                        ]
+                    },
+                }],
+                dataZoom: [
+                    {
+                        type: 'slider',
+                        show: true,
+                        start: 50,
+                        end: 100,
+                        handleSize: 8
+                    },
+                    {
+                        type: 'inside',
+                        start: 50,
+                        end: 100
+                    },
+                    
+                ],
+
+        })
+
+        console.log(xData);
+    })
+
+
+</script>
+
+
+
+</body>
+</html>
